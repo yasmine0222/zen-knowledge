@@ -1,0 +1,224 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum Visibility {
+  COMPANY
+  DEPARTMENT
+  PRIVATE
+}
+
+enum DocumentStatus {
+  DRAFT
+  PUBLISHED
+  OBSOLETE
+  DELETED
+}
+
+enum VersionStatus {
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
+
+enum FeedbackRating {
+  USEFUL
+  INACCURATE
+}
+
+enum IngestionStep {
+  UPLOAD
+  EXTRACT
+  CHUNK
+  EMBED
+  PUBLISH
+}
+
+enum IngestionStatus {
+  RUNNING
+  DONE
+  FAILED
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  users     User[]
+  documents Document[]
+
+  @@map("companies")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(MEMBER)
+  department   String?
+  companyId    String?
+  company      Company? @relation(fields: [companyId], references: [id])
+  createdAt    DateTime @default(now())
+
+  ownedDocuments Document[]    @relation("DocumentOwner")
+  chatSessions   ChatSession[]
+  feedbacks      Feedback[]
+  queryLogs      QueryLog[]
+
+  @@index([companyId])
+  @@map("users")
+}
+
+model Document {
+  id               String         @id @default(cuid())
+  companyId        String
+  company          Company        @relation(fields: [companyId], references: [id])
+  ownerId          String
+  owner            User           @relation("DocumentOwner", fields: [ownerId], references: [id])
+  title            String
+  department       String?
+  visibility       Visibility     @default(COMPANY)
+  status           DocumentStatus @default(DRAFT)
+  currentVersionId String?        @unique
+  reviewDueAt      DateTime?
+  reminderSentAt   DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  versions DocumentVersion[] @relation("DocumentVersions")
+  chunks   Chunk[]
+
+  @@index([companyId, status])
+  @@index([companyId, department])
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id            String        @id @default(cuid())
+  documentId    String
+  document      Document      @relation("DocumentVersions", fields: [documentId], references: [id])
+  version       Int
+  filePath      String
+  mimeType      String
+  extractedText String?
+  status        VersionStatus @default(PROCESSING)
+  errorMessage  String?
+  createdAt     DateTime      @default(now())
+
+  chunks        Chunk[]
+  ingestionJobs IngestionJob[]
+
+  @@unique([documentId, version])
+  @@map("document_versions")
+}
+
+/// Note: the `embedding` vector(384) column and its ivfflat index are added
+/// via raw SQL in migration `add_pgvector`, since Prisma has no native vector type.
+model Chunk {
+  id                String          @id @default(cuid())
+  documentVersionId String
+  documentVersion   DocumentVersion @relation(fields: [documentVersionId], references: [id])
+  documentId        String
+  document          Document        @relation(fields: [documentId], references: [id])
+  companyId         String
+  content           String
+  position          Int
+  isActive          Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+
+  @@index([companyId, isActive])
+  @@index([documentId])
+  @@map("chunks")
+}
+
+model ChatSession {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  companyId String
+  title     String   @default("Nouvelle conversation")
+  createdAt DateTime @default(now())
+
+  messages Message[]
+
+  @@index([userId])
+  @@map("chat_sessions")
+}
+
+model Message {
+  id            String      @id @default(cuid())
+  sessionId     String
+  session       ChatSession @relation(fields: [sessionId], references: [id])
+  role          MessageRole
+  content       String
+  citationsJson String?
+  createdAt     DateTime    @default(now())
+
+  feedbacks Feedback[]
+
+  @@index([sessionId])
+  @@map("messages")
+}
+
+model Feedback {
+  id        String         @id @default(cuid())
+  messageId String
+  message   Message        @relation(fields: [messageId], references: [id])
+  userId    String
+  user      User           @relation(fields: [userId], references: [id])
+  rating    FeedbackRating
+  comment   String?
+  createdAt DateTime       @default(now())
+
+  @@index([messageId])
+  @@map("feedbacks")
+}
+
+model QueryLog {
+  id                  String   @id @default(cuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id])
+  companyId           String
+  question            String
+  answeredWithSources Boolean
+  latencyMs           Int
+  model               String
+  tokensIn            Int
+  tokensOut           Int
+  retrievedChunkIds   String[]
+  createdAt           DateTime @default(now())
+
+  @@index([companyId, createdAt])
+  @@map("query_logs")
+}
+
+model IngestionJob {
+  id                String          @id @default(cuid())
+  documentVersionId String
+  documentVersion   DocumentVersion @relation(fields: [documentVersionId], references: [id])
+  step              IngestionStep
+  status            IngestionStatus
+  errorMessage      String?
+  startedAt         DateTime        @default(now())
+  finishedAt        DateTime?
+
+  @@index([documentVersionId])
+  @@map("ingestion_jobs")
+}

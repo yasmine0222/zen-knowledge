@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: zen-knowledge-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: zen
+      POSTGRES_PASSWORD: zen_dev_password
+      POSTGRES_DB: zen_knowledge
+    ports:
+      - "5432:5432"
+    volumes:
+      - zen_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zen -d zen_knowledge"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: zen-knowledge-n8n
+    restart: unless-stopped
+    environment:
+      N8N_SECURE_COOKIE: "false"
+      GENERIC_TIMEZONE: "Europe/Paris"
+    ports:
+      - "5678:5678"
+    volumes:
+      - zen_n8n_data:/home/node/.n8n
+      - ./n8n/workflows:/workflows
+
+volumes:
+  zen_postgres_data:
+  zen_n8n_data:
