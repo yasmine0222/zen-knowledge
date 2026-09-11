@@ -13,7 +13,7 @@ export default async function AdminPage() {
     <div className="space-y-8">
       <h1 className="text-lg font-semibold text-slate-900">Administration</h1>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <StatCard label="Requêtes (500 dernières)" value={stats.totalQueries.toString()} />
         <StatCard
           label="Coût estimé"
@@ -23,7 +23,45 @@ export default async function AdminPage() {
           label="Documents à réviser"
           value={stats.obsoleteQueue.length.toString()}
         />
+        <StatCard
+          label="Réponses utiles"
+          value={
+            stats.quality.usefulCount + stats.quality.inaccurateCount === 0
+              ? "—"
+              : `${Math.round(
+                  (stats.quality.usefulCount /
+                    (stats.quality.usefulCount + stats.quality.inaccurateCount)) *
+                    100
+                )}%`
+          }
+        />
       </div>
+
+      <Section title="Qualité des réponses (feedback utilisateur)">
+        <div className="flex items-center gap-6 px-4 py-3 text-sm">
+          <span className="text-green-700">👍 {stats.quality.usefulCount} utile(s)</span>
+          <span className="text-red-700">👎 {stats.quality.inaccurateCount} inexacte(s)</span>
+        </div>
+        {stats.quality.recentInaccurate.length === 0 ? (
+          <EmptyRow text="Aucune réponse signalée comme inexacte." />
+        ) : (
+          <table className="w-full text-sm">
+            <tbody className="divide-y divide-slate-100">
+              {stats.quality.recentInaccurate.map((f) => (
+                <tr key={f.id}>
+                  <td className="max-w-xs truncate px-4 py-2 text-slate-900">
+                    {f.message.content}
+                  </td>
+                  <td className="px-4 py-2 text-slate-500">{f.comment ?? "—"}</td>
+                  <td className="px-4 py-2 text-slate-400">
+                    {new Date(f.createdAt).toLocaleString("fr-FR")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Section>
 
       <Section title="Erreurs d'ingestion">
         {stats.failedVersions.length === 0 ? (
