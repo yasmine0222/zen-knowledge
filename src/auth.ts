@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { AuthError, type Session } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
@@ -53,3 +53,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 });
+
+/** auth() throws (not just returns null) when the session cookie can't be
+ * decrypted with the current AUTH_SECRET — e.g. the secret was rotated while
+ * a browser still held an old cookie. That's still "no session", not a
+ * server error: treat it as such everywhere auth() is read.
+ *
+ * Only catch next-auth's own AuthError subclasses — never a blanket catch.
+ * auth() also calls Next's cookies()/headers() internally, and during
+ * `next build`'s static-generation pass Next signals "this route needs
+ * request data, render it dynamically" by throwing its own internal error;
+ * swallowing that too tricks Next into thinking the route is static, and the
+ * build then fails for real when it tries to prerender a page that requires
+ * a session. */
+export async function safeAuth(): Promise<Session | null> {
+  try {
+    return await auth();
+  } catch (error) {
+    if (error instanceof AuthError) return null;
+    throw error;
+  }
+}

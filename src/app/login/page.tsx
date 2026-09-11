@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { safeAuth } from "@/auth";
 import { sessionUserStillExists } from "@/lib/auth/requireUser";
 import { LoginForm } from "./LoginForm";
 
 export default async function LoginPage() {
-  const session = await auth();
+  const session = await safeAuth();
   // Must also check the user row still exists: a stale session (deleted user
   // id, e.g. after a re-seed) would otherwise bounce here -> /chat -> back
   // here forever, since /chat's layout redirects on the same stale session.

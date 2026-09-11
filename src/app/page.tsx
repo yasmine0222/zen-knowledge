@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { safeAuth } from "@/auth";
 
 export default async function HomePage() {
-  const session = await auth();
+  const session = await safeAuth();
   redirect(session?.user ? "/chat" : "/login");
 }

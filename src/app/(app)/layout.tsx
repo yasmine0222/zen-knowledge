@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { auth, signOut } from "@/auth";
+import { safeAuth, signOut } from "@/auth";
 import { sessionUserStillExists } from "@/lib/auth/requireUser";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
+  const session = await safeAuth();
   if (!session?.user) redirect("/login");
 
   // A stateless JWT can outlive the user row it points to (e.g. after a

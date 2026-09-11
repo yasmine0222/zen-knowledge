@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { safeAuth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import type { SessionUser } from "./authorizedDocs";
 
@@ -17,7 +17,7 @@ export async function sessionUserStillExists(userId: string): Promise<boolean> {
 }
 
 export async function requireUser(): Promise<SessionUser> {
-  const session = await auth();
+  const session = await safeAuth();
   if (!session?.user) throw new UnauthorizedError("Non authentifié");
 
   if (!(await sessionUserStillExists(session.user.id))) {
