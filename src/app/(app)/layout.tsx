@@ -1,10 +1,16 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth, signOut } from "@/auth";
+import { sessionUserStillExists } from "@/lib/auth/requireUser";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
+
+  // A stateless JWT can outlive the user row it points to (e.g. after a
+  // re-seed). Catch it here, once, before any page underneath calls
+  // requireUser() and throws mid-render.
+  if (!(await sessionUserStillExists(session.user.id))) redirect("/login");
 
   const { user } = session;
 
