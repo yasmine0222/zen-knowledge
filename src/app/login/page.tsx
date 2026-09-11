@@ -1,10 +1,16 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { sessionUserStillExists } from "@/lib/auth/requireUser";
 import { LoginForm } from "./LoginForm";
 
 export default async function LoginPage() {
   const session = await auth();
-  if (session?.user) redirect("/chat");
+  // Must also check the user row still exists: a stale session (deleted user
+  // id, e.g. after a re-seed) would otherwise bounce here -> /chat -> back
+  // here forever, since /chat's layout redirects on the same stale session.
+  if (session?.user && (await sessionUserStillExists(session.user.id))) {
+    redirect("/chat");
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
