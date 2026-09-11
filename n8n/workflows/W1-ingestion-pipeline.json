@@ -1,0 +1,130 @@
+{
+  "name": "W1 - Ingestion document",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ingest",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b1a1a1a1-0001-4a1a-8a1a-000000000001",
+      "name": "Webhook - version publiée",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-100, 0],
+      "webhookId": "zen-knowledge-ingest"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_BASE_URL }}/api/internal/ingest",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-internal-secret", "value": "={{ $env.INTERNAL_API_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"documentVersionId\": $json.body.documentVersionId } }}",
+        "options": { "timeout": 120000 }
+      },
+      "id": "b1a1a1a1-0002-4a1a-8a1a-000000000002",
+      "name": "Extraire + chunker + embedder (app)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [120, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b1a1a1a1-0003-4a1a-8a1a-000000000003",
+      "name": "Publication réussie ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [340, 0]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "a1", "name": "status", "type": "string", "value": "READY" },
+            { "id": "a2", "name": "message", "type": "string", "value": "Document publié, chunks actifs." }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b1a1a1a1-0004-4a1a-8a1a-000000000004",
+      "name": "Publication après contrôle",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [560, -100]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "b1", "name": "status", "type": "string", "value": "FAILED" },
+            { "id": "b2", "name": "message", "type": "string", "value": "={{ $json.error }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b1a1a1a1-0005-4a1a-8a1a-000000000005",
+      "name": "Notifier propriétaire (échec)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [560, 100]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "b1a1a1a1-0006-4a1a-8a1a-000000000006",
+      "name": "Répondre au webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [780, 0]
+    }
+  ],
+  "connections": {
+    "Webhook - version publiée": {
+      "main": [[{ "node": "Extraire + chunker + embedder (app)", "type": "main", "index": 0 }]]
+    },
+    "Extraire + chunker + embedder (app)": {
+      "main": [[{ "node": "Publication réussie ?", "type": "main", "index": 0 }]]
+    },
+    "Publication réussie ?": {
+      "main": [
+        [{ "node": "Publication après contrôle", "type": "main", "index": 0 }],
+        [{ "node": "Notifier propriétaire (échec)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Publication après contrôle": {
+      "main": [[{ "node": "Répondre au webhook", "type": "main", "index": 0 }]]
+    },
+    "Notifier propriétaire (échec)": {
+      "main": [[{ "node": "Répondre au webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "W1 — Ingestion document. Déclenché par l'app après upload (POST vers ce webhook n8n avec { documentVersionId }). Appelle /api/internal/ingest (secret partagé x-internal-secret) qui exécute extraction → nettoyage → chunking → embeddings → publication transactionnelle (désactivation des anciens chunks). Branche succès/échec pour distinguer 'publication après contrôle' de 'notification propriétaire en cas d'échec (ex: PDF scanné vide)."
+  }
+}

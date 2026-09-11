@@ -1,0 +1,156 @@
+{
+  "name": "W3 - Contenu obsolète",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 6 * * *" }]
+        }
+      },
+      "id": "c3a1a1a1-0001-4a1a-8a1a-000000000001",
+      "name": "Tous les jours à 06:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-160, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.APP_BASE_URL }}/api/internal/obsolete-check",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "x-internal-secret", "value": "={{ $env.INTERNAL_API_SECRET }}" }]
+        },
+        "options": {}
+      },
+      "id": "c3a1a1a1-0002-4a1a-8a1a-000000000002",
+      "name": "Date de révision atteinte ?",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [60, 0]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "dueForReminder",
+        "options": {}
+      },
+      "id": "c3a1a1a1-0003-4a1a-8a1a-000000000003",
+      "name": "Documents à relancer",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [280, -140]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "overdueForDepublish",
+        "options": {}
+      },
+      "id": "c3a1a1a1-0004-4a1a-8a1a-000000000004",
+      "name": "Documents à dépublier",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [280, 160]
+    },
+    {
+      "parameters": {
+        "fromEmail": "zen-knowledge@groupzen.com.tn",
+        "toEmail": "={{ $json.owner.email }}",
+        "subject": "=Relance : révision requise pour « {{ $json.title }} »",
+        "text": "=Bonjour {{ $json.owner.name }},\n\nLe document « {{ $json.title }} » a dépassé sa date de révision ({{ $json.reviewDueAt }}). Merci de le mettre à jour ou de confirmer sa validité.\n\nSans action de votre part sous 14 jours, il sera automatiquement dépublié.",
+        "options": {}
+      },
+      "id": "c3a1a1a1-0005-4a1a-8a1a-000000000005",
+      "name": "Relance propriétaire (email)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [500, -220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_BASE_URL }}/api/internal/obsolete-check",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-internal-secret", "value": "={{ $env.INTERNAL_API_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"documentId\": $json.id, \"action\": \"remind\" } }}",
+        "options": {}
+      },
+      "id": "c3a1a1a1-0006-4a1a-8a1a-000000000006",
+      "name": "Marquer relance envoyée",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, -140]
+    },
+    {
+      "parameters": {
+        "fromEmail": "zen-knowledge@groupzen.com.tn",
+        "toEmail": "={{ $json.owner.email }}",
+        "subject": "=Document dépublié : « {{ $json.title }} »",
+        "text": "=Bonjour {{ $json.owner.name }},\n\nAucune action n'a été prise depuis la relance concernant « {{ $json.title }} ». Le document est désormais dépublié et ses passages ne seront plus proposés dans les réponses de l'assistant.",
+        "options": {}
+      },
+      "id": "c3a1a1a1-0007-4a1a-8a1a-000000000007",
+      "name": "Notifier dépublication (email)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [500, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_BASE_URL }}/api/internal/obsolete-check",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-internal-secret", "value": "={{ $env.INTERNAL_API_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"documentId\": $json.id, \"action\": \"depublish\" } }}",
+        "options": {}
+      },
+      "id": "c3a1a1a1-0008-4a1a-8a1a-000000000008",
+      "name": "Dépublication (désactive les chunks)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 160]
+    }
+  ],
+  "connections": {
+    "Tous les jours à 06:00": {
+      "main": [[{ "node": "Date de révision atteinte ?", "type": "main", "index": 0 }]]
+    },
+    "Date de révision atteinte ?": {
+      "main": [
+        [
+          { "node": "Documents à relancer", "type": "main", "index": 0 },
+          { "node": "Documents à dépublier", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Documents à relancer": {
+      "main": [[{ "node": "Relance propriétaire (email)", "type": "main", "index": 0 }]]
+    },
+    "Relance propriétaire (email)": {
+      "main": [[{ "node": "Marquer relance envoyée", "type": "main", "index": 0 }]]
+    },
+    "Documents à dépublier": {
+      "main": [[{ "node": "Notifier dépublication (email)", "type": "main", "index": 0 }]]
+    },
+    "Notifier dépublication (email)": {
+      "main": [[{ "node": "Dépublication (désactive les chunks)", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "W3 — Contenu obsolète. Cron quotidien qui lit /api/internal/obsolete-check (GET) : documents dont la reviewDueAt est dépassée sans relance encore envoyée (-> email au propriétaire, puis marquage reminderSentAt) et documents relancés depuis >14 jours sans action (-> dépublication : chunks désactivés, statut OBSOLETE). Le secret x-internal-secret protège les deux appels."
+  }
+}
