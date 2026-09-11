@@ -4,7 +4,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   AUTH_SECRET: z.string().min(1),
   GROQ_API_KEY: z.string().min(1).optional(),
-  GROQ_MODEL: z.string().default("llama-3.3-70b-versatile"),
+  GROQ_MODEL: z.string().default("openai/gpt-oss-120b"),
   INTERNAL_API_SECRET: z.string().min(1),
   APP_BASE_URL: z.string().default("http://localhost:3000"),
   STORAGE_DIR: z.string().default("./storage"),
