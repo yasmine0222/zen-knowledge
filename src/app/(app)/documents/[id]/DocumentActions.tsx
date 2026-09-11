@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { redirectToLoginIfUnauthorized } from "@/lib/client/authRedirect";
 
 export function DocumentActions({
   documentId,
@@ -18,7 +19,8 @@ export function DocumentActions({
   async function reindex() {
     setBusy(true);
     try {
-      await fetch(`/api/documents/${documentId}/reindex`, { method: "POST" });
+      const res = await fetch(`/api/documents/${documentId}/reindex`, { method: "POST" });
+      if (redirectToLoginIfUnauthorized(res)) return;
       router.refresh();
     } finally {
       setBusy(false);
@@ -35,6 +37,7 @@ export function DocumentActions({
         method: "POST",
         body: formData,
       });
+      if (redirectToLoginIfUnauthorized(res)) return;
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         setError(body.error ?? "Échec de l'envoi de la nouvelle version.");
@@ -53,7 +56,8 @@ export function DocumentActions({
     }
     setBusy(true);
     try {
-      await fetch(`/api/documents/${documentId}`, { method: "DELETE" });
+      const res = await fetch(`/api/documents/${documentId}`, { method: "DELETE" });
+      if (redirectToLoginIfUnauthorized(res)) return;
       router.push("/documents");
       router.refresh();
     } finally {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { redirectToLoginIfUnauthorized } from "@/lib/client/authRedirect";
 
 interface Citation {
   marker: number;
@@ -44,6 +45,7 @@ export function ChatClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question, sessionId }),
       });
+      if (redirectToLoginIfUnauthorized(res)) return;
       const data = await res.json();
 
       if (!res.ok) {

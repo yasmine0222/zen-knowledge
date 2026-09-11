@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { redirectToLoginIfUnauthorized } from "@/lib/client/authRedirect";
 
 export function UploadForm() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export function UploadForm() {
 
     try {
       const res = await fetch("/api/documents", { method: "POST", body: formData });
+      if (redirectToLoginIfUnauthorized(res)) return;
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Erreur lors de l'envoi.");
