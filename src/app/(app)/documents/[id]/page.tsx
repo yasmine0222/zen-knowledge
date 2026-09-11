@@ -27,6 +27,11 @@ export default async function DocumentDetailPage({
 
   if (!document || document.companyId !== user.companyId) notFound();
 
+  const activeChunks = await prisma.chunk.findMany({
+    where: { documentId: id, isActive: true },
+    orderBy: { position: "asc" },
+  });
+
   const hasFailedVersion = document.versions.some((v) => v.status === "FAILED");
 
   return (
@@ -86,6 +91,32 @@ export default async function DocumentDetailPage({
           ))}
         </div>
       </div>
+
+      {activeChunks.length > 0 && (
+        <div>
+          <h2 className="mb-2 text-sm font-semibold text-slate-700">
+            Contenu indexé (version active)
+          </h2>
+          <p className="mb-3 text-xs text-slate-400">
+            Chaque passage correspond à un chunk retrouvable par la recherche. Une citation dans
+            le chat pointe directement vers l&apos;un de ces passages.
+          </p>
+          <div className="space-y-2">
+            {activeChunks.map((chunk) => (
+              <div
+                key={chunk.id}
+                id={`chunk-${chunk.id}`}
+                className="scroll-mt-4 rounded-lg border border-slate-200 bg-white p-3 target:border-indigo-400 target:bg-indigo-50 target:ring-2 target:ring-indigo-300"
+              >
+                <p className="mb-1 text-xs font-medium text-slate-400">
+                  Passage #{chunk.position + 1}
+                </p>
+                <p className="whitespace-pre-wrap text-sm text-slate-700">{chunk.content}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -164,10 +164,10 @@ export function ChatClient() {
             </h3>
             <p className="mt-2 text-sm text-slate-600">{openCitation.excerpt}...</p>
             <a
-              href={`/documents/${openCitation.documentId}`}
+              href={`/documents/${openCitation.documentId}?chunk=${openCitation.chunkId}#chunk-${openCitation.chunkId}`}
               className="mt-3 inline-block text-sm font-medium text-indigo-600 hover:underline"
             >
-              Ouvrir le document →
+              Ouvrir le document au passage cité →
             </a>
           </div>
         </div>
