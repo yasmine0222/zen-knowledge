@@ -8,7 +8,13 @@ const envSchema = z.object({
   INTERNAL_API_SECRET: z.string().min(1),
   APP_BASE_URL: z.string().default("http://localhost:3000"),
   STORAGE_DIR: z.string().default("./storage"),
-  RETRIEVAL_MIN_SIMILARITY: z.coerce.number().default(0.55),
+  // Measured against this project's demo corpus: genuine French matches
+  // score ~0.45-0.65 with Xenova/all-MiniLM-L6-v2, but so do some unrelated
+  // queries (this small, non-fine-tuned model has weak topical separation
+  // for French). 0.45 is a middle ground, not a precise boundary — see
+  // README limitations. The system prompt's "say so if sources don't
+  // answer" instruction is the real backstop against false positives.
+  RETRIEVAL_MIN_SIMILARITY: z.coerce.number().default(0.45),
   RETRIEVAL_TOP_K: z.coerce.number().int().default(6),
 });
 

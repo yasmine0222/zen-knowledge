@@ -1,0 +1,11 @@
+-- The ivfflat index (lists = 100) is degenerate on small corpora: with far
+-- fewer rows than lists, k-means clustering at build time produces mostly
+-- empty/garbage lists, and ORDER BY embedding <=> query silently returns
+-- ZERO rows instead of falling back to a full scan — retrieval breaks
+-- completely, with no error, no matter how low RETRIEVAL_MIN_SIMILARITY is.
+--
+-- At this project's scale (hundreds to low thousands of chunks) an exact
+-- sequential scan on <=> is fast and always correct. Drop the index rather
+-- than re-tune `lists`, since the "right" lists value depends on corpus size
+-- and would need to be revisited as it grows anyway.
+DROP INDEX IF EXISTS chunks_embedding_idx;
