@@ -5,8 +5,19 @@ questions en langage naturel et reçoivent des réponses concises, sourcées ave
 ouvrables, générées uniquement à partir des documents qu'ils sont autorisés à voir. Réalisé dans
 le cadre du test technique Fullstack AI / Automation — Série F, choix F1.
 
+## Démo en ligne
+
+**https://zen-knowledge-mu.vercel.app** (Vercel + Neon Postgres/pgvector)
+
+Fonctionnent en ligne : connexion, permissions et isolation cross-société, bibliothèque de
+documents, administration. **Le chat ne génère pas de réponse sur ce déploiement** — voir
+[Limites connues](#limites-connues) pour la raison exacte (incompatibilité serverless/binaire
+natif) ; il fonctionne parfaitement en local/Docker (voir [Installation](#installation)), c'est
+ce qui est démontré dans la vidéo.
+
 ## Sommaire
 
+- [Démo en ligne](#démo-en-ligne)
 - [Architecture](#architecture)
 - [Installation](#installation)
 - [Comptes de démonstration](#comptes-de-démonstration)
@@ -160,9 +171,23 @@ Postgres/pgvector (fixtures créées et nettoyées à chaque run) :
 
 ## Limites connues
 
-- **Déploiement** : non hébergé à ce stade (application testée en local avec Docker pour
-  Postgres/pgvector et n8n). Nécessite un Postgres avec extension `pgvector` chez l'hébergeur
-  choisi.
+- **Chat indisponible sur le déploiement Vercel** : `@huggingface/transformers` (embeddings
+  locaux) dépend nativement d'`onnxruntime-node` (binaire `.so`), qui n'atteint pas correctement
+  les fonctions serverless de Vercel — confirmé après quatre approches distinctes (forcer le
+  backend WASM, `outputFileTracingIncludes`, alias vers le build WASM-only du paquet,
+  `serverExternalPackages`) : la fonction déployée échoue systématiquement avec
+  `libonnxruntime.so.1: cannot open shared object file`. `outputFileTracingIncludes` fonctionnait
+  pour inclure le binaire mais faisait alors dépasser la limite de 12 fonctions serverless du plan
+  Hobby (`serverExternalPackages` reste en place dans `next.config.ts` car c'est la pratique
+  recommandée par Next.js pour ce type de dépendance — voir les commentaires dans ce fichier pour
+  l'historique complet). Concrètement sur cette URL : la recherche/génération (chat) et l'upload
+  de nouveaux documents (qui déclenche l'indexation) échouent, car les deux appellent le module
+  d'embeddings ; consulter la bibliothèque existante, se connecter, voir les permissions par
+  société/service et l'administration fonctionnent normalement (aucun de ces flux n'a besoin
+  d'embeddings). Tout fonctionne sans exception en local/Docker (voir [Installation](#installation)).
+  Pistes de résolution pour une prochaine itération : embeddings via API externe (HTTP, pas de
+  binaire natif) plutôt que modèle local, ou hébergeur avec un vrai serveur Node.js persistant
+  (Railway, Render) plutôt que du serverless.
 - **Clé Groq** : `.env.example` contient un placeholder ; sans clé réelle, la génération de
   réponse échoue mais la recherche filtrée, les permissions et les citations restent
   démontrables indépendamment (elles ne dépendent pas du LLM).
@@ -186,9 +211,11 @@ Postgres/pgvector (fixtures créées et nettoyées à chaque run) :
   `20260911010000_drop_undersized_ivfflat_index`) au profit d'un scan exact, correct à cette échelle
   (quelques centaines à quelques milliers de chunks) ; à réintroduire avec un `lists` recalculé
   proportionnellement au volume réel si le corpus grossit significativement.
-- **n8n** : workflows exportés et conçus contre les routes internes réelles, mais non exécutés
-  contre une instance n8n vivante dans cette itération (le service tourne via docker-compose mais
-  les workflows n'ont pas encore été importés/activés manuellement).
+- **n8n** : W3 (obsolescence) a été importé dans une instance n8n réelle (via docker-compose) et
+  exécuté de bout en bout — relance email (capturé par MailHog), marquage `reminderSentAt`, puis
+  dépublication automatique (`status` → `OBSOLETE`, chunks désactivés) confirmés en base. W1
+  (ingestion) reste conçu contre la même route interne mais n'a pas été testé en conditions
+  réelles dans une instance n8n séparément de l'exécution inline sur upload.
 - **Citations** : ouvrent le document à l'ancre du chunk exact, mais sans mise en surbrillance du
   texte au sein du chunk (le chunk entier sert d'unité d'affichage).
 - **Pas de OCR** : un PDF scanné échoue intentionnellement à l'ingestion plutôt que d'être traité
