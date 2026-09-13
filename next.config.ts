@@ -1,4 +1,3 @@
-import path from "node:path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -16,12 +15,13 @@ const nextConfig: NextConfig = {
   // dependency at all), so nothing needs tracing or bundling specially.
   // This is @huggingface/transformers' own documented path for
   // environments where the native Node build doesn't fit.
+  // Turbopack rejects absolute filesystem paths here ("server relative
+  // imports are not implemented yet") — must be relative to the project
+  // root (where this file lives), not an OS path.
   turbopack: {
     resolveAlias: {
-      "@huggingface/transformers": path.resolve(
-        process.cwd(),
-        "node_modules/@huggingface/transformers/dist/transformers.web.js"
-      ),
+      "@huggingface/transformers":
+        "./node_modules/@huggingface/transformers/dist/transformers.web.js",
     },
   },
 };
