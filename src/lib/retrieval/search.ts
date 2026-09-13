@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { embedText, toVectorLiteral } from "@/lib/ingestion/embed";
+import { embedQuery, toVectorLiteral } from "@/lib/ingestion/embed";
 import { env } from "@/lib/env";
 
 export interface RetrievedChunk {
@@ -29,7 +29,7 @@ export async function searchChunks(
   const topK = opts.topK ?? env.RETRIEVAL_TOP_K;
   const minSimilarity = opts.minSimilarity ?? env.RETRIEVAL_MIN_SIMILARITY;
 
-  const queryVector = toVectorLiteral(await embedText(question));
+  const queryVector = toVectorLiteral(await embedQuery(question));
   const pgArrayLiteral = `{${authorizedDocumentIds.map((id) => `"${id}"`).join(",")}}`;
 
   const rows = await prisma.$queryRaw<

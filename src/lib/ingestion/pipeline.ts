@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { storage } from "@/lib/storage/local";
 import { extractText, ExtractionError } from "./extract";
 import { chunkText } from "./chunk";
-import { embedBatch, toVectorLiteral } from "./embed";
+import { embedPassageBatch, toVectorLiteral } from "./embed";
 
 /**
  * Runs the full ingestion pipeline for a document version: extract -> chunk -> embed -> publish.
@@ -32,7 +32,7 @@ export async function runIngestionPipeline(documentVersionId: string): Promise<v
     });
 
     const embeddings = await logStep(documentVersionId, "EMBED", () =>
-      embedBatch(chunks.map((c) => c.content))
+      embedPassageBatch(chunks.map((c) => c.content))
     );
 
     await logStep(documentVersionId, "PUBLISH", async () => {

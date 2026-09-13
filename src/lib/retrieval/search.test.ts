@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import { embedText, toVectorLiteral } from "@/lib/ingestion/embed";
+import { embedPassage, toVectorLiteral } from "@/lib/ingestion/embed";
 import { searchChunks } from "./search";
 
 // Permission isolation at the retrieval layer itself: even when another
@@ -85,7 +85,7 @@ beforeAll(async () => {
 
   // The embedding column isn't part of the Prisma schema (raw SQL only, see
   // schema.prisma comment on Chunk) — set it directly.
-  const vector = toVectorLiteral(await embedText(SHARED_CONTENT));
+  const vector = toVectorLiteral(await embedPassage(SHARED_CONTENT));
   await prisma.$executeRawUnsafe(
     `UPDATE chunks SET embedding = '${vector}'::vector WHERE id IN ('${chunkA.id}', '${chunkB.id}')`
   );

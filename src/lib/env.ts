@@ -8,13 +8,14 @@ const envSchema = z.object({
   INTERNAL_API_SECRET: z.string().min(1),
   APP_BASE_URL: z.string().default("http://localhost:3000"),
   STORAGE_DIR: z.string().default("./storage"),
-  // Measured against this project's demo corpus: genuine French matches
-  // score ~0.45-0.65 with Xenova/all-MiniLM-L6-v2, but so do some unrelated
-  // queries (this small, non-fine-tuned model has weak topical separation
-  // for French). 0.45 is a middle ground, not a precise boundary — see
-  // README limitations. The system prompt's "say so if sources don't
-  // answer" instruction is the real backstop against false positives.
-  RETRIEVAL_MIN_SIMILARITY: z.coerce.number().default(0.45),
+  // Measured against this project's demo corpus with Xenova/multilingual-e5-small:
+  // genuine matches (including cross-lingual, e.g. a French question over an
+  // English document) score ~0.83-0.89, while unrelated query/passage pairs
+  // score ~0.70-0.77 — a clean gap. 0.75 sits in that gap with margin on the
+  // true-positive side. Still not a proven-exact boundary for every possible
+  // query; the system prompt's "say so if sources don't answer" instruction
+  // remains the real backstop against false positives.
+  RETRIEVAL_MIN_SIMILARITY: z.coerce.number().default(0.75),
   RETRIEVAL_TOP_K: z.coerce.number().int().default(6),
 });
 
