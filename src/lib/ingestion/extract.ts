@@ -1,6 +1,19 @@
 import mammoth from "mammoth";
+import * as pdfjsWorker from "pdfjs-dist/legacy/build/pdf.worker.mjs";
 
 export class ExtractionError extends Error {}
+
+// pdf-parse (via pdfjs-dist) always runs its "fake worker" in Node.js
+// (real Worker threads aren't used server-side), which internally does
+// `await import(workerSrc)` with a bundler-relative path — that breaks
+// under Turbopack's dev SSR bundling ("Setting up fake worker failed:
+// Cannot find module '...pdf.worker.mjs'"), failing every real PDF.
+// pdfjs checks `globalThis.pdfjsWorker` before attempting that dynamic
+// import, so pre-registering it via a normal static import (which
+// Turbopack bundles correctly, unlike a runtime-computed path) skips the
+// broken code path entirely. This is pdfjs-dist's documented pattern for
+// bundled Node environments.
+(globalThis as unknown as { pdfjsWorker: typeof pdfjsWorker }).pdfjsWorker = pdfjsWorker;
 
 /** Extracts plain text from an uploaded file buffer based on its mime type. */
 export async function extractText(data: Buffer, mimeType: string): Promise<string> {
