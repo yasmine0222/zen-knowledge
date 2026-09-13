@@ -1,14 +1,28 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // @huggingface/transformers unconditionally requires onnxruntime-node at
-  // module load time in its Node.js build (regardless of the `device`
-  // option passed to pipeline()). Next's output file tracing doesn't pick
-  // up its native .so binary automatically, so serverless functions that
-  // import it (chat, document ingestion) fail with "libonnxruntime.so.1:
-  // cannot open shared object file" on Vercel. Force-include it.
-  outputFileTracingIncludes: {
-    "/*": ["./node_modules/onnxruntime-node/bin/**/*"],
+  // @huggingface/transformers' Node.js build unconditionally requires
+  // onnxruntime-node (a native .so binary) at module load time, regardless
+  // of the `device` option passed to pipeline() — fine in Docker/local dev,
+  // but Vercel's serverless bundling doesn't carry the binary over
+  // ("libonnxruntime.so.1: cannot open shared object file"). Forcing it in
+  // via outputFileTracingIncludes worked but pushed the Hobby plan over its
+  // 12-serverless-function limit (apparently by breaking whatever route
+  // bundling let 18 routes fit into 12 functions).
+  //
+  // Redirect the import at the bundler level to the package's own "web"
+  // build instead — same feature-extraction API, but WASM-only (no native
+  // dependency at all), so nothing needs tracing or bundling specially.
+  // This is @huggingface/transformers' own documented path for
+  // environments where the native Node build doesn't fit.
+  turbopack: {
+    resolveAlias: {
+      "@huggingface/transformers": path.resolve(
+        process.cwd(),
+        "node_modules/@huggingface/transformers/dist/transformers.web.js"
+      ),
+    },
   },
 };
 
