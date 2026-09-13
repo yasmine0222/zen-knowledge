@@ -24,11 +24,27 @@ services:
     environment:
       N8N_SECURE_COOKIE: "false"
       GENERIC_TIMEZONE: "Europe/Paris"
+      # n8n blocks $env access in node expressions by default; the exported
+      # workflows (n8n/workflows/*.json) rely on it for APP_BASE_URL and
+      # INTERNAL_API_SECRET, so allow it and pass those through.
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      APP_BASE_URL: "http://host.docker.internal:3000"
+      INTERNAL_API_SECRET: "${INTERNAL_API_SECRET}"
     ports:
       - "5678:5678"
     volumes:
       - zen_n8n_data:/home/node/.n8n
       - ./n8n/workflows:/workflows
+
+  # Local SMTP catcher for the n8n email nodes (W3 obsolescence workflow) —
+  # no real mail delivery, just a web UI at :8025 to see what would be sent.
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: zen-knowledge-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
 
 volumes:
   zen_postgres_data:
