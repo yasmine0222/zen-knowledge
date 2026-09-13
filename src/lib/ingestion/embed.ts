@@ -19,7 +19,12 @@ let extractorPromise: Promise<FeatureExtractionPipeline> | null = null;
 async function getExtractor(): Promise<FeatureExtractionPipeline> {
   if (!extractorPromise) {
     extractorPromise = import("@huggingface/transformers").then(({ pipeline }) =>
-      pipeline("feature-extraction", MODEL_NAME)
+      // Force the WASM backend explicitly: the default "cpu" device pulls in
+      // onnxruntime-node's native .so binary, which Vercel's serverless
+      // function bundling doesn't carry over ("libonnxruntime.so.1: cannot
+      // open shared object file"). WASM has no native dependency and runs
+      // the same everywhere — local dev, Docker, and serverless alike.
+      pipeline("feature-extraction", MODEL_NAME, { device: "wasm" })
     );
   }
   return extractorPromise;
