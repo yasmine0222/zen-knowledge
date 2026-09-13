@@ -1,29 +1,23 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // @huggingface/transformers' Node.js build unconditionally requires
-  // onnxruntime-node (a native .so binary) at module load time, regardless
-  // of the `device` option passed to pipeline() — fine in Docker/local dev,
-  // but Vercel's serverless bundling doesn't carry the binary over
-  // ("libonnxruntime.so.1: cannot open shared object file"). Forcing it in
-  // via outputFileTracingIncludes worked but pushed the Hobby plan over its
-  // 12-serverless-function limit (apparently by breaking whatever route
-  // bundling let 18 routes fit into 12 functions).
+  // @huggingface/transformers (and its native onnxruntime-node dependency)
+  // don't bundle correctly on Vercel: Turbopack's tracing/bundling either
+  // drops the native .so binary ("libonnxruntime.so.1: cannot open shared
+  // object file") or, when force-included via outputFileTracingIncludes,
+  // pushes the Hobby plan over its 12-serverless-function limit. Aliasing
+  // to the package's WASM-only "web" build (via turbopack.resolveAlias)
+  // built without errors but still hit the same runtime error — Turbopack
+  // re-processing an already-bundled file doesn't respect the stub
+  // conventions its original bundler used.
   //
-  // Redirect the import at the bundler level to the package's own "web"
-  // build instead — same feature-extraction API, but WASM-only (no native
-  // dependency at all), so nothing needs tracing or bundling specially.
-  // This is @huggingface/transformers' own documented path for
-  // environments where the native Node build doesn't fit.
-  // Turbopack rejects absolute filesystem paths here ("server relative
-  // imports are not implemented yet") — must be relative to the project
-  // root (where this file lives), not an OS path.
-  turbopack: {
-    resolveAlias: {
-      "@huggingface/transformers":
-        "./node_modules/@huggingface/transformers/dist/transformers.web.js",
-    },
-  },
+  // serverExternalPackages is Next's documented mechanism for exactly this
+  // class of problem (native bindings: sharp, bcrypt, onnxruntime, etc.):
+  // it opts the package out of bundling entirely, so it's `require()`d
+  // from node_modules at runtime like a normal Node.js server would, and
+  // Vercel copies the whole package — native binaries included — into the
+  // function instead of relying on static trace analysis.
+  serverExternalPackages: ["@huggingface/transformers", "onnxruntime-node"],
 };
 
 export default nextConfig;
